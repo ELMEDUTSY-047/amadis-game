@@ -1,0 +1,1 @@
+# Amadis Game usa librerias estandar de Python 3 (sin dependencias externas requeridas)

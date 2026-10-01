@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Amadis Game - Multijugador en Vivo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: linear-gradient(135deg, #0d1b2a, #1b263b);
+            color: #f1faee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            max-width: 480px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+        #banner-container {
+            position: relative;
+            width: 100%;
+            height: 135px;
+            background: #1d3557;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #custom-cover {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #banner-text-overlay {
+            position: relative;
+            z-index: 2;
+            width: 92%;
+            text-align: center;
+            pointer-events: none;
+        }
+        .banner-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #f1faee;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+        }
+        .banner-sub {
+            font-size: 0.8rem;
+            color: #a8dadc;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+        .content {
+            padding: 20px;
+        }
+        .badge {
+            display: inline-block;
+            background: #ffb703;
+            color: #023047;
+            font-weight: bold;
+            font-size: 0.8rem;
+            padding: 5px 12px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        h1 {
+            font-size: 1.7rem;
+            color: #ffb703;
+            margin-bottom: 6px;
+        }
+        .field-group {
+            margin-bottom: 13px;
+            text-align: left;
+        }
+        .field-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #a8dadc;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .input-control {
+            width: 100%;
+            padding: 11px 13px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .input-control:focus {
+            border-color: #ffb703;
+        }
+        .role-selector {
+            display: flex;
+            gap: 8px;
+        }
+        .role-btn {
+            flex: 1;
+            padding: 10px 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .role-btn.active {
+            background: #ffb703;
+            color: #023047;
+            border-color: #ffb703;
+            font-weight: bold;
+        }
+        .action-btn {
+            background: #fb8500;
+            color: white;
+            border: none;
+            padding: 13px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            margin-top: 6px;
+            margin-bottom: 8px;
+        }
+        .action-btn:hover, .action-btn:active {
+            background: #ffb703;
+            color: #023047;
+        }
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: #f1faee;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 11px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .secondary-btn:hover, .secondary-btn:active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .ready-btn {
+            background: #2a9d8f;
+            color: white;
+            border: none;
+            padding: 13px 20px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            margin-bottom: 10px;
+        }
+        .ready-btn.is-ready {
+            background: #52b788;
+            box-shadow: 0 0 15px rgba(82, 183, 136, 0.6);
+        }
+        /* Lista de Jugadores en Sala */
+        .players-list {
+            margin: 14px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .player-chip {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ready-badge {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .ready-badge.yes { background: #52b788; color: #023047; }
+        .ready-badge.no { background: rgba(255,255,255,0.2); color: #fff; }
+        
+        /* Juego */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .hud-val { color: #ffb703; }
+        .scenario-title { font-size: 1.15rem; margin-bottom: 6px; color: #e0e1dd; }
+        .scenario-desc { font-size: 0.88rem; color: #a8dadc; margin-bottom: 12px; line-height: 1.4; }
+        .scenario-question {
+            background: rgba(255, 255, 255, 0.07);
+            padding: 12px;
+            border-left: 4px solid #ffb703;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 14px;
+        }
+        .opciones-grid { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+        .opcion-btn {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 12px 14px;
+            font-size: 0.88rem;
+            border-radius: 10px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .opcion-btn.correcta { background: #2a9d8f !important; font-weight: bold; }
+        .opcion-btn.incorrecta { background: #e76f51 !important; font-weight: bold; }
+        .feedback-box {
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .fb-correct { background: rgba(42, 157, 143, 0.3); border: 1px solid #2a9d8f; color: #b7e4c7; }
+        .fb-incorrect { background: rgba(231, 111, 81, 0.3); border: 1px solid #e76f51; color: #ffcad4; }
+        
+        /* Leaderboard */
+        .leaderboard-list {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            max-height: 280px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .team-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- Banner Gráfico Adaptable -->
+        <div id="banner-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="banner-text-overlay">
+                <div class="banner-title">☀️ AMADIS GAME: MULTIJUGADOR ☀️</div>
+                <div class="banner-sub">Sincronización en vivo entre celulares de misión</div>
+            </div>
+        </div>
+
+        <!-- Pantalla 1: Registro Individual y Selección de Equipo -->
+        <div id="pantalla-login" class="content" style="text-align: center;">
+            <span class="badge">📡 Sala de Misión en Vivo</span>
+            <h1>¡Únete a la Ronda!</h1>
+            <p style="color: #a8dadc; margin-bottom: 16px; font-size: 0.88rem;">Ingresa tus datos y elige tu equipo para comenzar.</p>
+            
+            <div class="field-group">
+                <label for="input-jugador">Tu Nombre o Apodo:</label>
+                <input type="text" id="input-jugador" class="input-control" placeholder="Ej. Juan Carlos" value="">
+            </div>
+
+            <div class="field-group">
+                <label>Tu Rol en el Equipo:</label>
+                <div class="role-selector">
+                    <button type="button" class="role-btn" onclick="seleccionarRol('Sol')">☀️ Sol (Líder)</button>
+                    <button type="button" class="role-btn" onclick="seleccionarRol('Luna')">🌙 Luna (Mano Der.)</button>
+                    <button type="button" class="role-btn active" onclick="seleccionarRol('Estrella')">⭐ Estrella</button>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label for="select-equipo-id">Elige tu Equipo (1 de 10):</label>
+                <select id="select-equipo-id" class="input-control">
+                    <!-- Se carga dinámicamente con los 10 equipos -->
+                </select>
+            </div>
+
+            <button class="action-btn" onclick="unirseASala()">
+                🚪 Entrar a la Sala de Espera
+            </button>
+        </div>
+
+        <!-- Pantalla 2: Sala de Espera / Lobby Sincronizado -->
+        <div id="pantalla-lobby" class="content" style="display: none; text-align: center;">
+            <span class="badge" id="lobby-badge-equipo">Equipo</span>
+            <h1 style="font-size: 1.5rem;">Sala de Espera</h1>
+            <p style="color: #a8dadc; font-size: 0.85rem;">Conéctense todos desde sus celulares y alístense.</p>
+
+            <div style="background: rgba(0,0,0,0.25); padding: 10px; border-radius: 10px; margin: 12px 0; font-size: 0.85rem;">
+                <p>Estás jugando como: <strong id="lobby-mi-nombre" style="color: #ffb703;"></strong> (<span id="lobby-mi-rol"></span>)</p>
+            </div>
+
+            <button id="btn-alistar" class="ready-btn" onclick="toggleListo()">
+                ✋ ¡Alistarme para la partida!
+            </button>
+
+            <div style="text-align: left; font-size: 0.85rem; color: #a8dadc; margin-top: 10px;">
+                <strong>👥 Misioneros en la Sala:</strong>
+            </div>
+            <div id="lista-jugadores-lobby" class="players-list"></div>
+
+            <button id="btn-iniciar-todos" class="action-btn" style="display: none; background: #e76f51;" onclick="iniciarPartidaParaTodos()">
+                🚀 Iniciar Partida para Todos
+            </button>
+        </div>
+
+        <!-- Pantalla 3: Juego Activo con Preguntas e Incisos Aleatorios -->
+        <div id="pantalla-juego" class="content" style="display: none;">
+            <div class="hud">
+                <span>⏱️ <span id="hora-fase" class="hud-val">9:00 AM</span></span>
+                <span>⭐ Puntos: <span id="score" class="hud-val">0</span></span>
+                <span>⚡ Pregunta: <span id="num-pregunta" class="hud-val">1/7</span></span>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.25); padding: 7px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.82rem; display: flex; justify-content: space-between;">
+                <span>👥 <strong id="hud-equipo">Equipo</strong></span>
+                <span><span id="hud-jugador-info"></span></span>
+            </div>
+
+            <h3 id="titulo-escenario" class="scenario-title">Cargando...</h3>
+            <p id="desc-escenario" class="scenario-desc"></p>
+            
+            <div id="pregunta-escenario" class="scenario-question"></div>
+
+            <div id="opciones-container" class="opciones-grid"></div>
+
+            <div id="feedback-box" class="feedback-box"></div>
+
+            <button id="btn-siguiente" class="action-btn" style="display: none;" onclick="siguientePregunta()">
+                Siguiente Reto ➡️
+            </button>
+        </div>
+
+        <!-- Pantalla 4: Tabla de Posiciones en Vivo de los 10 Equipos -->
+        <div id="pantalla-leaderboard" class="content" style="display: none; text-align: center;">
+            <span class="badge" style="background: #e76f51; color: #fff;">🏆 RANKING EN VIVO</span>
+            <h1 style="font-size: 1.5rem;">Tabla de Posiciones</h1>
+            <p style="color: #a8dadc; font-size: 0.85rem; margin-bottom: 12px;">Puntaje acumulado por equipo en la ronda actual.</p>
+            
+            <div id="lista-leaderboard" class="leaderboard-list"></div>
+
+            <div style="margin-top: 16px;">
+                <button class="action-btn" onclick="reiniciarTodaLaSala()">
+                    🔄 Nueva Ronda para Todos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts con la lógica y los datos -->
+    <script src="data.js?v=2026_multi"></script>
+    <script src="game.js?v=2026_multi"></script>
+</body>
+</html>
